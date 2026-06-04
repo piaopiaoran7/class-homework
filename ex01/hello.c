@@ -2,6 +2,7 @@
 int main(void)
 {
     char buf[128];
+    printf("Hello World!\n");
     printf("请输入一段文字：");
     scanf("%s", buf);
     printf("你输入的内容：%s\n", buf);
