@@ -1,4 +1,2 @@
-# C语言GitHub课程作业
-## v1版本
-功能：基础HelloWorld打印输出
-
+# class-homework
+ex01：C语言入门HelloWorld程序
