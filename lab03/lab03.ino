@@ -1,92 +1,46 @@
-// lab03.ino millis实现SOS摩斯信号 LED接GPIO4
-const int ledPin = 4;
-// 时间参数定义
-const unsigned long shortLight = 200;    // 短亮时长
-const unsigned long longLight = 600;     // 长亮时长
-const unsigned long dotGap = 200;        // 单次闪烁间隔
-const unsigned long groupPause = 500;    // 分组（3短/3长）中间停顿
-const unsigned long sosEndPause = 2000;  // 整套SOS结束长停顿
+#define TOUCH_PIN 4
+#define LED_PIN 2
+#define THRESHOLD 500        // 根据串口读数修改，触摸值低于此值触发
 
-unsigned long lastTime = 0;
-unsigned long delayWait = 0;
-bool ledLight = false;
-int workState = 0; // 0空闲 1三短 2三长 3三短
-int flashCount = 0;
+bool ledState = false;
+unsigned long lastTouch = 0;
+const unsigned long DEBOUNCE_MS = 600; // 加长防抖到600ms，抑制连续抖动
+
+void gotTouch() {
+  unsigned long now = millis();
+  // 时间防抖拦截
+  if (now - lastTouch < DEBOUNCE_MS) return;
+  
+  // 二次读取触摸值，连续3次校验彻底过滤杂波
+  int val1 = touchRead(TOUCH_PIN);
+  delayMicroseconds(200);
+  int val2 = touchRead(TOUCH_PIN);
+  delayMicroseconds(200);
+  int val3 = touchRead(TOUCH_PIN);
+
+  // 三次读数全部低于阈值才判定为有效触摸
+  if(val1 >= THRESHOLD || val2 >= THRESHOLD || val3 >= THRESHOLD) return;
+
+  lastTouch = now;
+  ledState = !ledState;
+  digitalWrite(LED_PIN, ledState);
+}
 
 void setup() {
   Serial.begin(115200);
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, LOW);
-  Serial.println("lab03 SOS信号实验启动，LED接GPIO4");
+  delay(1000);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, ledState);
+  // 绑定触摸中断
+  touchAttachInterrupt(TOUCH_PIN, gotTouch, THRESHOLD);
+  Serial.println("Lab03 触摸中断增强消抖程序已启动");
+  Serial.println("操作：触摸GPIO4杜邦线切换LED亮灭");
 }
 
 void loop() {
-  unsigned long now = millis();
-  if (now - lastTime >= delayWait) {
-    lastTime = now;
-    switch (workState) {
-      case 0:
-        workState = 1;
-        flashCount = 0;
-        ledLight = true;
-        digitalWrite(ledPin, HIGH);
-        delayWait = shortLight;
-        break;
-      case 1:
-        if (ledLight) {
-          digitalWrite(ledPin, LOW);
-          ledLight = false;
-          delayWait = dotGap;
-          flashCount++;
-        } else {
-          if (flashCount >= 3) {
-            workState = 2;
-            flashCount = 0;
-            delayWait = groupPause;
-          } else {
-            digitalWrite(ledPin, HIGH);
-            ledLight = true;
-            delayWait = shortLight;
-          }
-        }
-        break;
-      case 2:
-        if (ledLight) {
-          digitalWrite(ledPin, LOW);
-          ledLight = false;
-          delayWait = dotGap;
-          flashCount++;
-        } else {
-          if (flashCount >= 3) {
-            workState = 3;
-            flashCount = 0;
-            delayWait = groupPause;
-          } else {
-            digitalWrite(ledPin, HIGH);
-            ledLight = true;
-            delayWait = longLight;
-          }
-        }
-        break;
-      case 3:
-        if (ledLight) {
-          digitalWrite(ledPin, LOW);
-          ledLight = false;
-          delayWait = dotGap;
-          flashCount++;
-        } else {
-          if (flashCount >= 3) {
-            workState = 0;
-            digitalWrite(ledPin, LOW);
-            delayWait = sosEndPause;
-            Serial.println("一轮SOS信号发送完成");
-          } else {
-            digitalWrite(ledPin, HIGH);
-            ledLight = true;
-            delayWait = shortLight;
-          }
-        }
-        break;
-    }
-  }
+  // 实时打印触摸数值，用于现场校准阈值
+  int touchVal = touchRead(TOUCH_PIN);
+  Serial.print("当前Touch数值：");
+  Serial.println(touchVal);
+  delay(100);
 }
