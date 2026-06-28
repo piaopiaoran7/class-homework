@@ -13,7 +13,7 @@ unsigned long lastTouchTime = 0;
 const unsigned long DEBOUNCE = 600;
 
 // 档位对应单步延时：数值越大，呼吸越慢
-int gearDelay[4] = {0, 22, 10, 4}; 
+int gearDelay[4] = {0, 8, 4, 1}; 
 
 void touchTrigger() {
   unsigned long now = millis();
